@@ -73,21 +73,23 @@ public class AAIndexFileParser {
 		String line = null;
 		line = buf.readLine();
 
-		while (  line != null ) {
-			if ( line.startsWith("//")) {
+		currentMatrix(buf, line);
+	}
+
+	private void currentMatrix(BufferedReader buf, String line) throws IOException {
+		while (line != null) {
+			if (line.startsWith("//")) {
 				finalizeMatrix();
 				inMatrix = false;
-
-			} else if ( line.startsWith("H ")){
-				// a new matrix!
+			} else if (line.startsWith("H ")) {
 				newMatrix(line);
-			} else if ( line.startsWith("D ")) {
+			} else if (line.startsWith("D ")) {
 				currentMatrix.setDescription(line.substring(2));
-			} else if ( line.startsWith("M ")) {
+			} else if (line.startsWith("M ")) {
 				initMatrix(line);
 				inMatrix = true;
-			} else if ( line.startsWith("  ")){
-				if ( inMatrix)
+			} else if (line.startsWith("  ")) {
+				if (inMatrix)
 					processScores(line);
 			}
 			line = buf.readLine();
@@ -102,21 +104,8 @@ public class AAIndexFileParser {
 		currentRowPos++;
 
 		for ( int i =0 ; i < values.length ; i++){
-			if ( values[i].endsWith(".")) {
-				values[i] = values[i] + "0";
-			}
-
-			// special case: MEHP950101
-			if (values[i].equals("-")) {
-				values[i] = "0";
-			}
-			if ( scale == -1 ) {
-				scale = determineScale(values[0]);
-			}
-
-			Float score = Float.parseFloat(values[i]);
-			score = scale * score;
-
+			Float score = score(values, i);
+			values = values(values, i);
 			Short s = (short) Math.round(score);
 			matrix[currentRowPos][i] = s;
 
@@ -130,6 +119,26 @@ public class AAIndexFileParser {
 			if ( score < min)
 				min = s;
 		}
+	}
+
+	private Float score(String[] values, int i) throws NumberFormatException {
+		values = values(values, i);
+		if (scale == -1) {
+			scale = determineScale(values[0]);
+		}
+		Float score = Float.parseFloat(values[i]);
+		score = scale * score;
+		return score;
+	}
+
+	private String[] values(String[] values, int i) {
+		if (values[i].endsWith(".")) {
+			values[i] = values[i] + "0";
+		}
+		if (values[i].equals("-")) {
+			values[i] = "0";
+		}
+		return values;
 	}
 
 	private int determineScale(String value) {

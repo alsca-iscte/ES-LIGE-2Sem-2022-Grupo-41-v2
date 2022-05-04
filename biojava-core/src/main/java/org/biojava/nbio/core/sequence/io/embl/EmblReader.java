@@ -55,9 +55,7 @@ public class EmblReader {
 		if (file == null)
 			throw new NullPointerException("file can't be null");
 
-		if (file.isDirectory())
-			throw new IllegalArgumentException("the file can't be a directory");
-
+		file(file);
 		try (FileReader fileReader = new FileReader(file)) {
 			String line = "";
 			String lineIdentifier;
@@ -119,6 +117,11 @@ public class EmblReader {
 		}
 
 		return emblRecord;
+	}
+
+	private static void file(File file) throws IllegalArgumentException {
+		if (file.isDirectory())
+			throw new IllegalArgumentException("the file can't be a directory");
 	}
 
 	private static void populateSequence(String line, StringBuilder sequence) {
