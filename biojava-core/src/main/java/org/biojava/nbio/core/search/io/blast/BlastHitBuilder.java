@@ -33,6 +33,8 @@ import org.biojava.nbio.core.sequence.template.Sequence;
  *
  * @author Paolo Pavan
  */
+
+//detetada como god class, mas não concordamos com essa definição
 public class BlastHitBuilder {
 	private int hitNum;
 	private String hitId;
