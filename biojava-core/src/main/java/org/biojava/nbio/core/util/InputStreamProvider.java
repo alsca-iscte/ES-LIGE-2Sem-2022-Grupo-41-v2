@@ -30,6 +30,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 //import org.slf4j.Logger;
@@ -127,11 +128,8 @@ public class InputStreamProvider {
 			}
 		}
 
-		int magic = 0;
-
-
+		int magic = magic(u);
 		InputStream inStream = u.openStream();
-		magic = getMagicNumber(inStream);
 		inStream.close();
 
 
@@ -151,6 +149,13 @@ public class InputStreamProvider {
 			return inStream;
 		}
 
+	}
+
+	private int magic(URL u) throws IOException {
+		int magic = 0;
+		InputStream inStream = u.openStream();
+		magic = getMagicNumber(inStream);
+		return magic;
 	}
 
 
@@ -196,13 +201,11 @@ public class InputStreamProvider {
 
 		else if ( fileName.endsWith(".zip")){
 
+			ZipEntry entry = entry(f);
 			ZipFile zipfile = new ZipFile(f);
 
-			// stream to first entry is returned ...
-			ZipEntry entry;
 			Enumeration<? extends ZipEntry> e = zipfile.entries();
 			if ( e.hasMoreElements()){
-				entry = e.nextElement();
 				inputStream = zipfile.getInputStream(entry);
 			} else {
 				throw new IOException ("Zip file has no entries");
@@ -238,6 +241,18 @@ public class InputStreamProvider {
 		}
 
 		return inputStream;
+	}
+
+	private ZipEntry entry(File f) throws ZipException, IOException {
+		ZipFile zipfile = new ZipFile(f);
+		ZipEntry entry;
+		Enumeration<? extends ZipEntry> e = zipfile.entries();
+		if (e.hasMoreElements()) {
+			entry = e.nextElement();
+		} else {
+			throw new IOException("Zip file has no entries");
+		}
+		return entry;
 	}
 
 

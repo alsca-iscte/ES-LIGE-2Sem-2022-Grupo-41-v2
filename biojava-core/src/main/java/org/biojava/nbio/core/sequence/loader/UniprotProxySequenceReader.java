@@ -48,6 +48,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPathExpressionException;
 import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.rmi.RemoteException;
 import java.util.*;
@@ -571,6 +572,7 @@ public class UniprotProxySequenceReader<C extends Compound> implements ProxySequ
 		while (status == HttpURLConnection.HTTP_MOVED_TEMP
 				|| status == HttpURLConnection.HTTP_MOVED_PERM
 				|| status == HttpURLConnection.HTTP_SEE_OTHER) {
+			status = status(url, timeout, useragent, conn, status);
 			// Redirect!
 			String newUrl = conn.getHeaderField("Location");
 
@@ -578,29 +580,34 @@ public class UniprotProxySequenceReader<C extends Compound> implements ProxySequ
 				throw new IOException("Cyclic redirect detected at "+newUrl);
 			}
 
-			// Preserve cookies
-			String cookies = conn.getHeaderField("Set-Cookie");
-
 			// open the new connection again
 			url = new URL(newUrl);
 			conn.disconnect();
 			conn = (HttpURLConnection) url.openConnection();
-			if(cookies != null) {
-				conn.setRequestProperty("Cookie", cookies);
-			}
-			conn.addRequestProperty("User-Agent", useragent);
-			conn.setInstanceFollowRedirects(true);
-			conn.setConnectTimeout(timeout);
-			conn.setReadTimeout(timeout);
 			conn.connect();
-
-			status = conn.getResponseCode();
 
 			logger.info("Redirecting from {} to {}", url, newUrl);
 		}
 		conn.connect();
 
 		return conn;
+	}
+
+	private static int status(URL url, final int timeout, final String useragent, HttpURLConnection conn, int status)
+			throws MalformedURLException, IOException {
+		String newUrl = conn.getHeaderField("Location");
+		String cookies = conn.getHeaderField("Set-Cookie");
+		url = new URL(newUrl);
+		conn = (HttpURLConnection) url.openConnection();
+		if (cookies != null) {
+			conn.setRequestProperty("Cookie", cookies);
+		}
+		conn.addRequestProperty("User-Agent", useragent);
+		conn.setInstanceFollowRedirects(true);
+		conn.setConnectTimeout(timeout);
+		conn.setReadTimeout(timeout);
+		status = conn.getResponseCode();
+		return status;
 	}
 
 	private StringBuilder fetchUniprotXML(String uniprotURL)
@@ -811,21 +818,13 @@ public class UniprotProxySequenceReader<C extends Compound> implements ProxySequ
 			Element entryElement = XMLHelper.selectSingleElement(uniprotElement, "entry");
 			ArrayList<Element> dbreferenceElementList = XMLHelper.selectElements(entryElement, "dbReference");
 			for (Element element : dbreferenceElementList) {
+				DBReferenceInfo dbreferenceInfo = dbreferenceInfo(element);
 				String type = element.getAttribute("type");
-				String id = element.getAttribute("id");
 				List<DBReferenceInfo> idlist = databaseReferencesHashMap.get(type);
 				if (idlist == null) {
 					idlist = new ArrayList<DBReferenceInfo>();
 					databaseReferencesHashMap.put(type, idlist);
 				}
-				DBReferenceInfo dbreferenceInfo = new DBReferenceInfo(type, id);
-				ArrayList<Element> propertyElementList = XMLHelper.selectElements(element, "property");
-				for (Element propertyElement : propertyElementList) {
-					String propertyType = propertyElement.getAttribute("type");
-					String propertyValue = propertyElement.getAttribute("value");
-					dbreferenceInfo.addProperty(propertyType, propertyValue);
-				}
-
 				idlist.add(dbreferenceInfo);
 			}
 		} catch (XPathExpressionException e) {
@@ -834,5 +833,18 @@ public class UniprotProxySequenceReader<C extends Compound> implements ProxySequ
 		}
 
 		return databaseReferencesHashMap;
+	}
+
+	private DBReferenceInfo dbreferenceInfo(Element element) throws XPathExpressionException {
+		String type = element.getAttribute("type");
+		String id = element.getAttribute("id");
+		DBReferenceInfo dbreferenceInfo = new DBReferenceInfo(type, id);
+		ArrayList<Element> propertyElementList = XMLHelper.selectElements(element, "property");
+		for (Element propertyElement : propertyElementList) {
+			String propertyType = propertyElement.getAttribute("type");
+			String propertyValue = propertyElement.getAttribute("value");
+			dbreferenceInfo.addProperty(propertyType, propertyValue);
+		}
+		return dbreferenceInfo;
 	}
 }

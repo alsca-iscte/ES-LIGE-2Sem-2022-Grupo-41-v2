@@ -260,20 +260,8 @@ public class SingleLinkageClusterer {
 
 				//int containingClusterId = getContainingCluster(clusters, dendrogram[i]);
 
-				int firstClusterId = -1;
-				int secondClusterId = -1;
-				for (int cId:clusters.keySet()) {
-					Set<Integer> members = clusters.get(cId);
-
-					if (members.contains(dendrogram[i].getFirst())) {
-						firstClusterId = cId;
-					}
-					if (members.contains(dendrogram[i].getSecond())) {
-						secondClusterId = cId;
-					}
-				}
-
-
+				int firstClusterId = firstClusterId(clusters, i);
+				int secondClusterId = secondClusterId(clusters, i);
 				if (firstClusterId==-1 && secondClusterId==-1) {
 					// neither member is in a cluster yet, let's assign a new cluster and put them both in
 					Set<Integer> members = new TreeSet<Integer>();
@@ -328,13 +316,7 @@ public class SingleLinkageClusterer {
 
 		// anything not clustered is assigned to a singleton cluster (cluster with one member)
 		for (int i=0;i<numItems;i++) {
-			boolean isAlreadyClustered = false;
-			for (Set<Integer> cluster:finalClusters.values()) {
-				if (cluster.contains(i)) {
-					isAlreadyClustered = true;
-					break;
-				}
-			}
+			boolean isAlreadyClustered = isAlreadyClustered(finalClusters, i);
 			if (!isAlreadyClustered) {
 				Set<Integer> members = new TreeSet<Integer>();
 				members.add(i);
@@ -347,6 +329,39 @@ public class SingleLinkageClusterer {
 		logger.debug("Clusters: \n"+clustersToString(finalClusters));
 
 		return finalClusters;
+	}
+
+	private int firstClusterId(Map<Integer, Set<Integer>> clusters, int i) {
+		int firstClusterId = -1;
+		for (int cId : clusters.keySet()) {
+			Set<Integer> members = clusters.get(cId);
+			if (members.contains(dendrogram[i].getFirst())) {
+				firstClusterId = cId;
+			}
+		}
+		return firstClusterId;
+	}
+
+	private int secondClusterId(Map<Integer, Set<Integer>> clusters, int i) {
+		int secondClusterId = -1;
+		for (int cId : clusters.keySet()) {
+			Set<Integer> members = clusters.get(cId);
+			if (members.contains(dendrogram[i].getSecond())) {
+				secondClusterId = cId;
+			}
+		}
+		return secondClusterId;
+	}
+
+	private boolean isAlreadyClustered(Map<Integer, Set<Integer>> finalClusters, int i) {
+		boolean isAlreadyClustered = false;
+		for (Set<Integer> cluster : finalClusters.values()) {
+			if (cluster.contains(i)) {
+				isAlreadyClustered = true;
+				break;
+			}
+		}
+		return isAlreadyClustered;
 	}
 
 	private boolean isWithinCutoff(int i, double cutoff) {

@@ -175,6 +175,7 @@ public interface Location extends Iterable<Location>, Accessioned {
 		 */
 		public static Location circularLocation(int start, int end, Strand strand, int length) {
 
+			int modEnd = modEnd(start, end, length);
 			int min = Math.min(start, end);
 			int max = Math.max(start, end);
 			//Tells us we're dealing with something that's not _right_
@@ -193,14 +194,11 @@ public interface Location extends Iterable<Location>, Accessioned {
 
 			//Fine for forward coords (i..e start < end)
 			int modStart = modulateCircularIndex(start, length);
-			int modEnd = modulateCircularIndex(end, length);
 			int numberOfPasses = completeCircularPasses(Math.max(start, end), length);
 
 			if (isReverse) {
 				int reversedModStart = new SimplePoint(modStart).reverse(length).getPosition();
-				int reversedModEnd = new SimplePoint(modEnd).reverse(length).getPosition();
 				modStart = reversedModStart;
-				modEnd = reversedModEnd;
 				start = reversedModStart;
 				//+1 to number of passes to skip the run encoded by the start
 				end = (length * (numberOfPasses + 1)) + modEnd;
@@ -214,6 +212,17 @@ public interface Location extends Iterable<Location>, Accessioned {
 			locations.add(new SimpleLocation(1, modEnd, strand));
 			return new SimpleLocation(new SimplePoint(start),
 					new SimplePoint(end), strand, true, false, locations);
+		}
+
+		private static int modEnd(int start, int end, int length) {
+			int min = Math.min(start, end);
+			boolean isReverse = (min != start);
+			int modEnd = modulateCircularIndex(end, length);
+			if (isReverse) {
+				int reversedModEnd = new SimplePoint(modEnd).reverse(length).getPosition();
+				modEnd = reversedModEnd;
+			}
+			return modEnd;
 		}
 
 		private static interface LocationPredicate {

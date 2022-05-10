@@ -254,6 +254,8 @@ public class UncompressInputStream extends FilterInputStream {
 
 				// handle CLEAR code
 
+				s_size = s_size(l_tab_prefix, l_tab_suffix, l_stack, l_oldcode, l_finchar, l_stackp, l_free_ent, s_size,
+						code);
 				if (code == TBL_CLEAR && block_mode) {
 					System.arraycopy(zeros, 0, l_tab_prefix, 0, zeros.length);
 					l_free_ent = TBL_FIRST - 1;
@@ -303,7 +305,6 @@ public class UncompressInputStream extends FilterInputStream {
 
 				// And put them out in forward order
 
-				s_size = l_stack.length - l_stackp;
 				int num = (s_size >= len) ? len : s_size;
 				System.arraycopy(l_stack, l_stackp, buf, off, num);
 				off += num;
@@ -313,8 +314,8 @@ public class UncompressInputStream extends FilterInputStream {
 
 				// generate new entry in table
 
+				l_tab_prefix = l_tab_prefix(l_tab_prefix, l_maxmaxcode, l_oldcode, l_free_ent);
 				if (l_free_ent < l_maxmaxcode) {
-					l_tab_prefix[l_free_ent] = l_oldcode;
 					l_tab_suffix[l_free_ent] = l_finchar;
 					l_free_ent++;
 				}
@@ -358,6 +359,35 @@ public class UncompressInputStream extends FilterInputStream {
 
 		eof = true;
 		return off - start;
+	}
+
+
+	private int s_size(int[] l_tab_prefix, byte[] l_tab_suffix, byte[] l_stack, int l_oldcode, byte l_finchar,
+			int l_stackp, int l_free_ent, int s_size, int code) throws IOException {
+		if (code == TBL_CLEAR && block_mode) {
+			l_free_ent = TBL_FIRST - 1;
+		}
+		l_stackp = l_stack.length;
+		if (code >= l_free_ent) {
+			if (code > l_free_ent)
+				throw new IOException("corrupt input: code=" + code + ", free_ent=" + l_free_ent);
+			l_stack[--l_stackp] = l_finchar;
+			code = l_oldcode;
+		}
+		while (code >= 256) {
+			l_stack[--l_stackp] = l_tab_suffix[code];
+			code = l_tab_prefix[code];
+		}
+		s_size = l_stack.length - l_stackp;
+		return s_size;
+	}
+
+
+	private int[] l_tab_prefix(int[] l_tab_prefix, int l_maxmaxcode, int l_oldcode, int l_free_ent) {
+		if (l_free_ent < l_maxmaxcode) {
+			l_tab_prefix[l_free_ent] = l_oldcode;
+		}
+		return l_tab_prefix;
 	}
 
 

@@ -179,24 +179,7 @@ public class InsdcParser {
 						if (subLocations.size() == 1) {
 							boundedLocationsCollection.addAll(subLocations);
 						} else {
-							Point min = Location.Tools.getMin(subLocations).getStart();
-							Point max = Location.Tools.getMax(subLocations).getEnd();
-							AbstractLocation motherLocation
-									= new SimpleLocation(
-											min,
-											max
-									);
-
-							if (splitQualifier.equalsIgnoreCase("join")) {
-								motherLocation = new InsdcLocations.GroupLocation(subLocations);
-							}
-							if (splitQualifier.equalsIgnoreCase("order")) {
-								motherLocation = new InsdcLocations.OrderLocation(subLocations);
-							}
-							if (splitQualifier.equalsIgnoreCase("bond")) {
-								motherLocation = new InsdcLocations.BondLocation(subLocations);
-							}
-							motherLocation.setStrand(getGroupLocationStrand(subLocations));
+							AbstractLocation motherLocation = motherLocation(splitQualifier, subLocations);
 							boundedLocationsCollection.add(motherLocation);
 						}
 					break;
@@ -270,18 +253,30 @@ public class InsdcParser {
 		return boundedLocationsCollection;
 	}
 
+	private AbstractLocation motherLocation(String splitQualifier, List<Location> subLocations) {
+		Point min = Location.Tools.getMin(subLocations).getStart();
+		Point max = Location.Tools.getMax(subLocations).getEnd();
+		AbstractLocation motherLocation = new SimpleLocation(min, max);
+		if (splitQualifier.equalsIgnoreCase("join")) {
+			motherLocation = new InsdcLocations.GroupLocation(subLocations);
+		}
+		if (splitQualifier.equalsIgnoreCase("order")) {
+			motherLocation = new InsdcLocations.OrderLocation(subLocations);
+		}
+		if (splitQualifier.equalsIgnoreCase("bond")) {
+			motherLocation = new InsdcLocations.BondLocation(subLocations);
+		}
+		motherLocation.setStrand(getGroupLocationStrand(subLocations));
+		return motherLocation;
+	}
+
 
 	private List<String> splitString(String input) {
 		List<String> result = new ArrayList<String>();
 		int start = 0;
 		int openedParenthesis = 0;
 		for (int current = 0; current < input.length(); current++) {
-			if (input.charAt(current) == '(') {
-				openedParenthesis++;
-			}
-			if (input.charAt(current) == ')') {
-				openedParenthesis--;
-			}
+			openedParenthesis = openedParenthesis(input, openedParenthesis, current);
 			boolean atLastChar = (current == input.length() - 1);
 			if (atLastChar) {
 				result.add(input.substring(start));
@@ -291,6 +286,16 @@ public class InsdcParser {
 			}
 		}
 		return result;
+	}
+
+	private int openedParenthesis(String input, int openedParenthesis, int current) {
+		if (input.charAt(current) == '(') {
+			openedParenthesis++;
+		}
+		if (input.charAt(current) == ')') {
+			openedParenthesis--;
+		}
+		return openedParenthesis;
 	}
 
 	private Strand getGroupLocationStrand(List<Location> ll){
