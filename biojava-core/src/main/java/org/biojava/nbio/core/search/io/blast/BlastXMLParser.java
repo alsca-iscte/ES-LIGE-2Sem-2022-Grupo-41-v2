@@ -53,12 +53,10 @@ import org.xml.sax.SAXException;
  * @author Paolo Pavan
  */
 public class BlastXMLParser implements ResultFactory {
+	private BlastXMLParserProduct blastXMLParserProduct = new BlastXMLParserProduct();
 	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(Hsp.class);
 	Document blastDoc = null;
 	private File targetFile;
-	private List<Sequence> queryReferences, databaseReferences;
-	private Map<String,Sequence> queryReferencesMap, databaseReferencesMap;
-
 	public BlastXMLParser() {
 
 	}
@@ -88,7 +86,7 @@ public class BlastXMLParser implements ResultFactory {
 		// getAbsolutePath throws SecurityException
 		readFile(targetFile.getAbsolutePath());
 		// create mappings between sequences and blast id
-		mapIds();
+		blastXMLParserProduct.mapIds();
 
 		ArrayList<Result> resultsCollection;
 		ArrayList<Hit> hitsCollection;
@@ -122,7 +120,7 @@ public class BlastXMLParser implements ResultFactory {
 					.setQueryDef(XMLHelper.selectSingleElement(element, "Iteration_query-def").getTextContent())
 					.setQueryLength(new Integer(XMLHelper.selectSingleElement(element,"Iteration_query-len").getTextContent()));
 
-				if (queryReferences != null) resultBuilder.setQuerySequence(queryReferencesMap.get(
+				if (blastXMLParserProduct.getQueryReferences() != null) resultBuilder.setQuerySequence(blastXMLParserProduct.getQueryReferencesMap().get(
 						XMLHelper.selectSingleElement(element,"Iteration_query-ID").getTextContent()
 				));
 
@@ -141,7 +139,7 @@ public class BlastXMLParser implements ResultFactory {
 						.setHitAccession(XMLHelper.selectSingleElement(hitElement, "Hit_accession").getTextContent())
 						.setHitLen(new Integer(XMLHelper.selectSingleElement(hitElement, "Hit_len").getTextContent()));
 
-					if (databaseReferences != null) blastHitBuilder.setHitSequence(databaseReferencesMap.get(
+					if (blastXMLParserProduct.getDatabaseReferences() != null) blastHitBuilder.setHitSequence(blastXMLParserProduct.getDatabaseReferencesMap().get(
 						XMLHelper.selectSingleElement(hitElement, "Hit_id").getTextContent()
 					));
 
@@ -202,34 +200,12 @@ public class BlastXMLParser implements ResultFactory {
 
 	@Override
 	public void setQueryReferences(List<Sequence> sequences) {
-		queryReferences = sequences;
+		blastXMLParserProduct.setQueryReferences(sequences);
 	}
 
 	@Override
 	public void setDatabaseReferences(List<Sequence> sequences) {
-		databaseReferences = sequences;
-	}
-
-	/**
-	 * fill the map association between sequences an a unique id
-	 */
-	private void mapIds() {
-		if (queryReferences != null) {
-			queryReferencesMap = new HashMap<String,Sequence>(queryReferences.size());
-			for (int counter=0; counter < queryReferences.size() ; counter ++){
-				String id = "Query_"+(counter+1);
-				queryReferencesMap.put(id, queryReferences.get(counter));
-			}
-		}
-
-		if (databaseReferences != null) {
-			databaseReferencesMap = new HashMap<String,Sequence>(databaseReferences.size());
-			for (int counter=0; counter < databaseReferences.size() ; counter ++){
-				// this is strange: while Query_id are 1 based, Hit (database) id are 0 based
-				String id = "gnl|BL_ORD_ID|"+(counter);
-				databaseReferencesMap.put(id, databaseReferences.get(counter));
-			}
-		}
+		blastXMLParserProduct.setDatabaseReferences(sequences);
 	}
 
 	@Override

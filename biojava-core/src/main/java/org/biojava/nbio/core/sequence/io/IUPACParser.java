@@ -76,6 +76,8 @@ import java.util.*;
  */
 public class IUPACParser {
 
+	private IUPACParserProduct iUPACParserProduct = new IUPACParserProduct();
+
 	private static class IOD {
 		public static final IUPACParser INSTANCE = new IUPACParser();
 	}
@@ -86,8 +88,6 @@ public class IUPACParser {
 
 	public static final String      IUPAC_LOCATION = "org/biojava/nbio/core/sequence/iupac.txt";
 
-	private InputStream              is;
-	private List<IUPACTable>         tables;
 	private Map<String, IUPACTable>  nameLookup;
 	private Map<Integer, IUPACTable> idLookup;
 
@@ -96,24 +96,21 @@ public class IUPACParser {
 	 */
 	public IUPACParser() {
 		//use the preCache version to make sure we don't keep a IO handle open
-		is = new ClasspathResource(IUPAC_LOCATION, true).getInputStream();
+		iUPACParserProduct.setIs(new ClasspathResource(IUPAC_LOCATION, true).getInputStream());
 	}
 
 	/**
 	 * Allows you to specify a different IUPAC table.
 	 */
 	public IUPACParser(InputStream is) {
-		this.is = is;
+		iUPACParserProduct.setIs(is);
 	}
 
 	/**
 	 * Returns a list of all available IUPAC tables
 	 */
 	public List<IUPACTable> getTables() {
-		if (tables == null) {
-			tables = parseTables();
-		}
-		return tables;
+		return iUPACParserProduct.getTables();
 	}
 
 	/**
@@ -136,51 +133,11 @@ public class IUPACParser {
 		if(nameLookup == null) {
 			nameLookup = new HashMap<String, IUPACTable>();
 			idLookup = new HashMap<Integer, IUPACTable>();
-			for(IUPACTable t: getTables()) {
+			for(IUPACTable t: iUPACParserProduct.getTables()) {
 				nameLookup.put(t.getName(), t);
 				idLookup.put(t.getId(), t);
 			}
 		}
-	}
-
-	private List<IUPACTable> parseTables() {
-		List<IUPACTable> localTables = new ArrayList<IUPACTable>();
-		List<String> lines = IOUtils.getList(is);
-		Integer id = null;
-		String name, aa, starts, baseone, basetwo, basethree;
-		name = aa = starts = baseone = basetwo = basethree = null;
-		for (String line : lines) {
-			if (line.equalsIgnoreCase("//")) {
-				localTables.add(new IUPACTable(name, id, aa, starts, baseone, basetwo,
-						basethree));
-				name = aa = starts = baseone = basetwo = basethree = null;
-				id = null;
-			}
-			else {
-				String[] keyValue = line.split("\\s*=\\s*");
-				if (keyValue[0].equals("AAs")) {
-					aa = keyValue[1];
-				}
-				else if (keyValue[0].equals("Starts")) {
-					starts = keyValue[1];
-				}
-				else if (keyValue[0].equals("Base1")) {
-					baseone = keyValue[1];
-				}
-				else if (keyValue[0].equals("Base2")) {
-					basetwo = keyValue[1];
-				}
-				else if (keyValue[0].equals("Base3")) {
-					basethree = keyValue[1];
-				}
-				else {
-					name = keyValue[0];
-					id = Integer.parseInt(keyValue[1]);
-				}
-			}
-		}
-
-		return localTables;
 	}
 
 	/**
@@ -190,26 +147,22 @@ public class IUPACParser {
 	 */
 	public static class IUPACTable implements Table {
 
+		private IUPACTableProduct iUPACTableProduct;
 		private final Integer      id;
 		private final String       name;
 		private final String       aminoAcidString;
 		private final String       startCodons;
-		private final String       baseOne;
-		private final String       baseTwo;
-		private final String       baseThree;
-
 		private final List<Codon>  codons    = new ArrayList<Codon>();
 		private CompoundSet<Codon> compounds = null;
 
 		public IUPACTable(String name, int id, String aminoAcidString,
 				String startCodons, String baseOne, String baseTwo, String baseThree) {
+			this.iUPACTableProduct = new IUPACTableProduct(baseOne, baseTwo, baseThree);
 			this.aminoAcidString = aminoAcidString;
 			this.startCodons = startCodons;
 			this.name = name;
 			this.id = id;
-			this.baseOne = baseOne;
-			this.baseTwo = baseTwo;
-			this.baseThree = baseThree;
+			
 		}
 
 		/**
@@ -272,7 +225,7 @@ public class IUPACParser {
 			if (this.codons.isEmpty()) {
 				List<String> aminoAcidStrings = aminoAcids();
 				List<String> startCodonStrings = startCodons();
-				List<List<String>> codonStrings = codonStrings();
+				List<List<String>> codonStrings = iUPACTableProduct.codonStrings();
 
 				for (int i = 0; i < aminoAcidStrings.size(); i++) {
 
@@ -325,18 +278,6 @@ public class IUPACParser {
 				};
 			}
 			return compounds;
-		}
-
-		private List<List<String>> codonStrings() {
-			List<List<String>> codons = new ArrayList<List<String>>();
-			for (int i = 0; i < baseOne.length(); i++) {
-				List<String> codon = Arrays.asList(Character
-						.toString(baseOne.charAt(i)),
-						Character.toString(baseTwo.charAt(i)), Character.toString(baseThree
-								.charAt(i)));
-				codons.add(codon);
-			}
-			return codons;
 		}
 
 		private List<String> aminoAcids() {

@@ -51,6 +51,8 @@ import static org.biojava.nbio.core.util.Equals.equal;
  */
 public abstract class AbstractLocation implements Serializable, Location {
 
+	private AbstractLocationProduct abstractLocationProduct = new AbstractLocationProduct();
+
 	private static final long serialVersionUID = 1L;
 
 	//TODO Need to have the Sequence lookup resolver here; see the next one as well
@@ -63,11 +65,6 @@ public abstract class AbstractLocation implements Serializable, Location {
 	private boolean circular;
 	private boolean betweenCompounds;
 	private AccessionID accession;
-
-	private boolean partialOn5prime = false;
-	private boolean partialOn3prime = false;
-
-
 
 	protected AbstractLocation() {
 		super();
@@ -193,23 +190,23 @@ public abstract class AbstractLocation implements Serializable, Location {
 	}
 
 	public boolean isPartialOn5prime() {
-		return partialOn5prime;
+		return abstractLocationProduct.getPartialOn5prime();
 	}
 
 	public void setPartialOn5prime(boolean partialOn5prime) {
-		this.partialOn5prime = partialOn5prime;
+		abstractLocationProduct.setPartialOn5prime(partialOn5prime);
 	}
 
 	public boolean isPartialOn3prime() {
-		return partialOn3prime;
+		return abstractLocationProduct.getPartialOn3prime();
 	}
 
 	public void setPartialOn3prime(boolean partialOn3prime) {
-		this.partialOn3prime = partialOn3prime;
+		abstractLocationProduct.setPartialOn3prime(partialOn3prime);
 	}
 
 	public boolean isPartial() {
-		return partialOn5prime || partialOn3prime;
+		return abstractLocationProduct.isPartial();
 	}
 
 	/**

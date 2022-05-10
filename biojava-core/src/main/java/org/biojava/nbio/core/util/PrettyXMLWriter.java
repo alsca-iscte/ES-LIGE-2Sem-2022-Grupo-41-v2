@@ -34,6 +34,10 @@ import java.util.*;
  */
 
 public class PrettyXMLWriter implements XMLWriter {
+	private PrettyXMLWriterProduct2 prettyXMLWriterProduct2 = new PrettyXMLWriterProduct2();
+
+	private PrettyXMLWriterProduct prettyXMLWriterProduct = new PrettyXMLWriterProduct();
+
 	private int indentUnit = 2;
 
 	private PrintWriter writer;
@@ -42,8 +46,6 @@ public class PrettyXMLWriter implements XMLWriter {
 	private int indent = 0;
 
 	private Map<String, String> namespacePrefixes = new HashMap<String, String>();
-	private int namespaceSeed = 0;
-	private LinkedList<List<String>> namespaceBindings = new LinkedList<List<String>>();
 	private List<String> namespacesDeclared = new ArrayList<String>();
 
 	public PrettyXMLWriter(PrintWriter writer) {
@@ -61,7 +63,7 @@ public class PrettyXMLWriter implements XMLWriter {
 	{
 		if (!namespacePrefixes.containsKey(nsURI)) {
 			if (isOpeningTag) {
-				String prefix = allocPrefix(nsURI);
+				String prefix = prettyXMLWriterProduct2.allocPrefix(nsURI, this.namespacePrefixes);
 				attribute("xmlns:" + prefix, nsURI);
 			} else {
 				namespacesDeclared.add(nsURI);
@@ -76,7 +78,7 @@ public class PrettyXMLWriter implements XMLWriter {
 			for (Iterator<String> nsi = namespacesDeclared.iterator(); nsi.hasNext(); ) {
 				String nsURI = nsi.next();
 				if (!namespacePrefixes.containsKey(nsURI)) {
-					String prefix = allocPrefix(nsURI);
+					String prefix = prettyXMLWriterProduct2.allocPrefix(nsURI, this.namespacePrefixes);
 					attribute("xmlns:" + prefix, nsURI);
 				}
 			}
@@ -105,20 +107,7 @@ public class PrettyXMLWriter implements XMLWriter {
 		indent++;
 		isOpeningTag = true;
 		afterNewline = false;
-		namespaceBindings.add(null);
-	}
-
-	private String allocPrefix(String nsURI) {
-		String prefix = "ns" + (++namespaceSeed);
-		namespacePrefixes.put(nsURI, prefix);
-		List<String> bindings = namespaceBindings.getLast();
-		if (bindings == null) {
-			bindings = new ArrayList<String>();
-			namespaceBindings.removeLast();
-			namespaceBindings.add(bindings);
-		}
-		bindings.add(nsURI);
-		return prefix;
+		prettyXMLWriterProduct2.getNamespaceBindings().add(null);
 	}
 
 	@Override
@@ -133,7 +122,7 @@ public class PrettyXMLWriter implements XMLWriter {
 		boolean alloced = false;
 		String prefix = namespacePrefixes.get(nsURI);
 		if (prefix == null) {
-			prefix = allocPrefix(nsURI);
+			prefix = prettyXMLWriterProduct2.allocPrefix(nsURI, this.namespacePrefixes);
 			alloced = true;
 		}
 		writer.print('<');
@@ -166,7 +155,7 @@ public class PrettyXMLWriter implements XMLWriter {
 
 		String prefix = namespacePrefixes.get(nsURI);
 		if (prefix == null) {
-			prefix = allocPrefix(nsURI);
+			prefix = prettyXMLWriterProduct2.allocPrefix(nsURI, this.namespacePrefixes);
 			attribute("xmlns:" + prefix, nsURI);
 		}
 
@@ -175,7 +164,7 @@ public class PrettyXMLWriter implements XMLWriter {
 		writer.print(':');
 		writer.print(localName);
 		writer.print("=\"");
-		printAttributeValue(value);
+		prettyXMLWriterProduct.printAttributeValue(value, this.writer);
 		writer.print('"');
 	}
 
@@ -190,14 +179,14 @@ public class PrettyXMLWriter implements XMLWriter {
 		writer.print(' ');
 		writer.print(qName);
 		writer.print("=\"");
-		printAttributeValue(value);
+		prettyXMLWriterProduct.printAttributeValue(value, this.writer);
 		writer.print('"');
 	}
 
 	private void _closeTag() {
 		isOpeningTag = false;
 		afterNewline = true;
-		List<String> hereBindings = namespaceBindings.removeLast();
+		List<String> hereBindings = prettyXMLWriterProduct2.getNamespaceBindings().removeLast();
 		if (hereBindings != null) {
 			for (Iterator<String> bi = hereBindings.iterator(); bi.hasNext(); ) {
 				namespacePrefixes.remove(bi.next());
@@ -257,7 +246,7 @@ public class PrettyXMLWriter implements XMLWriter {
 		writer.println('>');
 		isOpeningTag = false;
 	}
-	printChars(data);
+	prettyXMLWriterProduct.printChars(data, this.writer);
 	writer.println();
 	afterNewline = true;
 	}
@@ -270,7 +259,7 @@ public class PrettyXMLWriter implements XMLWriter {
 		writer.print('>');
 		isOpeningTag = false;
 	}
-	printChars(data);
+	prettyXMLWriterProduct.printChars(data, this.writer);
 	afterNewline = false;
 	}
 
@@ -285,45 +274,19 @@ public class PrettyXMLWriter implements XMLWriter {
 	protected void printChars(String data)
 		throws IOException
 	{
-	if (data == null) {
-		printChars("null");
-		return;
-	}
-
-	for (int pos = 0; pos < data.length(); ++pos) {
-		char c = data.charAt(pos);
-		if (c == '<' || c == '>' || c == '&') {
-		numericalEntity(c);
-		} else {
-		writer.write(c);
-		}
-	}
+	prettyXMLWriterProduct.printChars(data, this.writer);
 	}
 
 	protected void printAttributeValue(String data)
 		throws IOException
 	{
-	if (data == null) {
-		printAttributeValue("null");
-		return;
-	}
-
-	for (int pos = 0; pos < data.length(); ++pos) {
-		char c = data.charAt(pos);
-		if (c == '<' || c == '>' || c == '&' || c == '"') {
-		numericalEntity(c);
-		} else {
-		writer.write(c);
-		}
-	}
+	prettyXMLWriterProduct.printAttributeValue(data, this.writer);
 	}
 
 	protected void numericalEntity(char c)
 		throws IOException
 	{
-	writer.print("&#");
-	writer.print((int) c);
-	writer.print(';');
+	prettyXMLWriterProduct.numericalEntity(c, this.writer);
 	}
 
 	@Override
