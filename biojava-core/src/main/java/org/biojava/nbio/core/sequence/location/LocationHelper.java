@@ -335,18 +335,31 @@ public class LocationHelper {
 	 * we may find the locations on
 	 */
 	public static Point detectEnd(List<Location> subLocations, boolean isCircular) {
-		int end = 0;
+		int end = end(subLocations, isCircular);
 		Point lastPoint = null;
 		if(isCircular) {
 			for (Location sub : subLocations) {
 				lastPoint = sub.getEnd();
-				end += lastPoint.getPosition();
 			}
 		}
 		else {
 			lastPoint = subLocations.get(subLocations.size()-1).getEnd();
-			end = lastPoint.getPosition();
 		}
 		return new SimplePoint(end, lastPoint.isUnknown(), lastPoint.isUncertain());
+	}
+
+	private static int end(List<Location> subLocations, boolean isCircular) {
+		int end = 0;
+		Point lastPoint = null;
+		if (isCircular) {
+			for (Location sub : subLocations) {
+				lastPoint = sub.getEnd();
+				end += lastPoint.getPosition();
+			}
+		} else {
+			lastPoint = subLocations.get(subLocations.size() - 1).getEnd();
+			end = lastPoint.getPosition();
+		}
+		return end;
 	}
 }
