@@ -47,14 +47,16 @@ import java.util.Map;
  */
 public class GenbankProxySequenceReader<C extends Compound> extends StringProxySequenceReader<C> implements FeaturesKeyWordInterface, DatabaseReferenceInterface, FeatureRetriever {
 
-	private static final Logger logger = LoggerFactory.getLogger(GenbankProxySequenceReader.class);
+	public GenbankProxySequenceReaderProduct genbankProxySequenceReaderProduct = new GenbankProxySequenceReaderProduct();
 
-	private static final String eutilBaseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"; //
-	private String genbankDirectoryCache = null;
-	private GenbankSequenceParser<AbstractSequence<C>, C> genbankParser;
-	private GenericGenbankHeaderParser<AbstractSequence<C>, C> headerParser;
-	private String header;
-	private Map<String, List<AbstractFeature<AbstractSequence<C>, C>>> features;
+	public final static Logger logger = LoggerFactory.getLogger(GenbankProxySequenceReader.class);
+
+	public static final String eutilBaseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"; //
+	public static String genbankDirectoryCache = null;
+	public GenbankSequenceParser<AbstractSequence<C>, C> genbankParser;
+	public GenericGenbankHeaderParser<AbstractSequence<C>, C> headerParser;
+	public String header;
+	public Map<String, List<AbstractFeature<AbstractSequence<C>, C>>> features;
 
 
 	/**
@@ -91,47 +93,9 @@ public class GenbankProxySequenceReader<C extends Compound> extends StringProxyS
 		inStream.close();
 	}
 
-	private BufferedInputStream getBufferedInputStream(String accessionID, String db) throws IOException, InterruptedException {
-		BufferedInputStream inStream = null;
-		if (genbankDirectoryCache != null && genbankDirectoryCache.length() > 0) {
-			File f = new File(genbankDirectoryCache + File.separatorChar + accessionID + ".gb");
-			if (f.exists()) {
-				logger.debug("Reading: {}", f.toString());
-				inStream = new BufferedInputStream(new FileInputStream(f));
-			} else {
-				InputStream in = getEutilsInputStream(accessionID, db);
-				copyInputStreamToFile(in, f);
-				inStream = new BufferedInputStream(new FileInputStream(f));
-			}
-		} else {
-			inStream = new BufferedInputStream(getEutilsInputStream(accessionID, db));
-		}
-		return inStream;
-	}
-
-	private void copyInputStreamToFile(InputStream in, File f) throws IOException, InterruptedException {
-		try (FileOutputStream out = new FileOutputStream(f)) {
-			byte[] buffer = new byte[1024];
-			int len = in.read(buffer);
-			while (len != -1) {
-				out.write(buffer, 0, len);
-				len = in.read(buffer);
-				if (Thread.interrupted()) {
-					in.close();
-					out.close();
-					throw new InterruptedException();
-				}
-			}
-			in.close();
-		}
-	}
-
-	private InputStream getEutilsInputStream(String accessionID, String db) throws IOException {
-		String genbankURL = eutilBaseURL + "efetch.fcgi?db=" + db + "&id=" + accessionID + "&rettype=gb&retmode=text";
-		logger.trace("Loading: {}", genbankURL);
-		URL genbank = new URL(genbankURL);
-		URLConnection genbankConnection = genbank.openConnection();
-		return genbankConnection.getInputStream();
+	private InputStream getBufferedInputStream(String accessionID, String db) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	/**

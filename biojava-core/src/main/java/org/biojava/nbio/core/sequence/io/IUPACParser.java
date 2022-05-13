@@ -76,7 +76,7 @@ import java.util.*;
  */
 public class IUPACParser {
 
-	private IUPACParserProduct iUPACParserProduct = new IUPACParserProduct();
+	private IUPACParserProduct2 iUPACParserProduct2 = new IUPACParserProduct2();
 
 	private static class IOD {
 		public static final IUPACParser INSTANCE = new IUPACParser();
@@ -88,7 +88,6 @@ public class IUPACParser {
 
 	public static final String      IUPAC_LOCATION = "org/biojava/nbio/core/sequence/iupac.txt";
 
-	private Map<String, IUPACTable>  nameLookup;
 	private Map<Integer, IUPACTable> idLookup;
 
 	/**
@@ -96,48 +95,36 @@ public class IUPACParser {
 	 */
 	public IUPACParser() {
 		//use the preCache version to make sure we don't keep a IO handle open
-		iUPACParserProduct.setIs(new ClasspathResource(IUPAC_LOCATION, true).getInputStream());
+		iUPACParserProduct2.getIUPACParserProduct().setIs(new ClasspathResource(IUPAC_LOCATION, true).getInputStream());
 	}
 
 	/**
 	 * Allows you to specify a different IUPAC table.
 	 */
 	public IUPACParser(InputStream is) {
-		iUPACParserProduct.setIs(is);
+		iUPACParserProduct2.getIUPACParserProduct().setIs(is);
 	}
 
 	/**
 	 * Returns a list of all available IUPAC tables
 	 */
 	public List<IUPACTable> getTables() {
-		return iUPACParserProduct.getTables();
+		return iUPACParserProduct2.getIUPACParserProduct().getTables();
 	}
 
 	/**
 	 * Returns a table by its name
 	 */
 	public IUPACTable getTable(String name) {
-		populateLookups();
-		return nameLookup.get(name);
+		return iUPACParserProduct2.getTable(name, this);
 	}
 
 	/**
 	 * Returns a table by its identifier i.e. 1 means universal codon tables
 	 */
 	public IUPACTable getTable(Integer id) {
-		populateLookups();
+		iUPACParserProduct2.populateLookups(this);
 		return idLookup.get(id);
-	}
-
-	private void populateLookups() {
-		if(nameLookup == null) {
-			nameLookup = new HashMap<String, IUPACTable>();
-			idLookup = new HashMap<Integer, IUPACTable>();
-			for(IUPACTable t: iUPACParserProduct.getTables()) {
-				nameLookup.put(t.getName(), t);
-				idLookup.put(t.getId(), t);
-			}
-		}
 	}
 
 	/**
@@ -295,5 +282,13 @@ public class IUPACParser {
 			}
 			return split;
 		}
+	}
+
+	public void setIdLookup(Map<Integer, IUPACTable> idLookup) {
+		this.idLookup = idLookup;
+	}
+
+	public Map<Integer, IUPACTable> getIdLookup() {
+		return idLookup;
 	}
 }

@@ -36,9 +36,11 @@ import java.util.*;
  */
 public class SingleLinkageClusterer {
 
-	private static final Logger logger = LoggerFactory.getLogger(SingleLinkageClusterer.class);
+	private SingleLinkageClustererProduct singleLinkageClustererProduct = new SingleLinkageClustererProduct();
 
-	private class LinkedPair {
+	public static final Logger logger = LoggerFactory.getLogger(SingleLinkageClusterer.class);
+
+	public class LinkedPair {
 
 		private int first;
 		private int second;
@@ -77,18 +79,9 @@ public class SingleLinkageClusterer {
 
 	}
 
-	private double[][] matrix;
-
-	private boolean isScoreMatrix;
-
-	private int numItems;
-
 	private LinkedPair[] dendrogram;
 
 	//private Set<Integer> toSkip;
-
-	private ArrayList<Integer> indicesToCheck;
-
 
 	/**
 	 * Constructs a new SingleLinkageClusterer
@@ -102,14 +95,14 @@ public class SingleLinkageClusterer {
 	 * @throws IllegalArgumentException if matrix not square
 	 */
 	public SingleLinkageClusterer(double[][] matrix, boolean isScoreMatrix) {
-		this.matrix = matrix;
-		this.isScoreMatrix = isScoreMatrix;
+		singleLinkageClustererProduct.setMatrix(matrix);
+		singleLinkageClustererProduct.setIsScoreMatrix(isScoreMatrix);
 
 		if (matrix.length!=matrix[0].length) {
 			throw new IllegalArgumentException("Distance matrix for clustering must be a square matrix");
 		}
 
-		this.numItems = matrix.length;
+		singleLinkageClustererProduct.setNumItems(matrix.length);
 
 	}
 
@@ -119,124 +112,10 @@ public class SingleLinkageClusterer {
 	 */
 	public LinkedPair[] getDendrogram() {
 		if (dendrogram==null) {
-			clusterIt();
+			singleLinkageClustererProduct.clusterIt(this);
 		}
 
 		return dendrogram;
-	}
-
-	/**
-	 * Calculate the hierarchical clustering and store it in dendrogram array
-	 * This is the naive implementation (o(n3)) of single linkage clustering as outlined in wikipedia:
-	 * http://en.wikipedia.org/wiki/Single-linkage_clustering
-	 */
-	private void clusterIt() {
-
-		dendrogram = new LinkedPair[numItems-1];
-
-
-		logger.debug("Initial matrix: \n"+matrixToString());
-
-
-		for (int m=0;m<numItems-1;m++) {
-
-			updateIndicesToCheck(m);
-			LinkedPair pair = getClosestPair();
-			merge(pair);
-			dendrogram[m] = pair;
-
-			//if (debug) {
-			//	System.out.println("Matrix after iteration "+m+" (merged "+pair.getFirst()+","+pair.getSecond()+")");
-			//	printMatrix();
-			//}
-		}
-
-	}
-
-	/**
-	 * Merge 2 rows/columns of the matrix by the linkage function (see {@link #link(double, double)}
-	 * @param closestPair
-	 */
-	private void merge(LinkedPair closestPair) {
-
-
-		int first = closestPair.getFirst();
-		int second = closestPair.getSecond();
-
-		for (int other=0;other<numItems;other++) {
-			matrix[Math.min(first,other)][Math.max(first, other)] = link(getDistance(first, other), getDistance(second, other));
-		}
-
-	}
-
-	/**
-	 * The linkage function: minimum of the 2 distances (i.e. single linkage clustering)
-	 * @param d1
-	 * @param d2
-	 * @return
-	 */
-	private double link(double d1, double d2) {
-		if (isScoreMatrix) {
-			return Math.max(d1,d2);
-		} else {
-			return Math.min(d1,d2);
-		}
-	}
-
-	private double getDistance(int first, int second) {
-		return matrix[Math.min(first, second)][Math.max(first, second)];
-	}
-
-	private void updateIndicesToCheck(int m) {
-
-		if (indicesToCheck==null) {
-			indicesToCheck = new ArrayList<Integer>(numItems);
-
-			for (int i=0;i<numItems;i++) {
-				indicesToCheck.add(i);
-			}
-		}
-
-		if (m==0) return;
-
-		indicesToCheck.remove(new Integer(dendrogram[m-1].getFirst()));
-	}
-
-	private LinkedPair getClosestPair() {
-
-		LinkedPair closestPair = null;
-
-		if (isScoreMatrix) {
-			double max = 0.0;
-			for (int i:indicesToCheck) {
-
-				for (int j:indicesToCheck) {
-					if (j<=i) continue;
-
-					if (matrix[i][j]>=max) {
-						max = matrix[i][j];
-						closestPair = new LinkedPair(i,j,max);
-					}
-
-				}
-			}
-		} else {
-			double min = Double.MAX_VALUE;
-			for (int i:indicesToCheck) {
-
-				for (int j:indicesToCheck) {
-					if (j<=i) continue;
-
-					if (matrix[i][j]<=min) {
-						min = matrix[i][j];
-						closestPair = new LinkedPair(i,j,min);
-					}
-
-				}
-			}
-		}
-
-		return closestPair;
 	}
 
 	/**
@@ -247,20 +126,20 @@ public class SingleLinkageClusterer {
 	public Map<Integer, Set<Integer>> getClusters(double cutoff) {
 
 		if (dendrogram==null) {
-			clusterIt();
+			singleLinkageClustererProduct.clusterIt(this);
 		}
 
 		Map<Integer, Set<Integer>> clusters = new TreeMap<Integer, Set<Integer>>();
 
 		int clusterId = 1;
 
-		for (int i=0;i<numItems-1;i++) {
+		for (int i=0;i<singleLinkageClustererProduct.getNumItems()-1;i++) {
 
-			if (isWithinCutoff(i, cutoff)) {
+			if (singleLinkageClustererProduct.isWithinCutoff(i, cutoff, this)) {
 
 				//int containingClusterId = getContainingCluster(clusters, dendrogram[i]);
 
-				int firstClusterId = firstClusterId(clusters, i);
+				int firstClusterId = singleLinkageClustererProduct.firstClusterId(clusters, i, this);
 				int secondClusterId = secondClusterId(clusters, i);
 				if (firstClusterId==-1 && secondClusterId==-1) {
 					// neither member is in a cluster yet, let's assign a new cluster and put them both in
@@ -315,7 +194,7 @@ public class SingleLinkageClusterer {
 		}
 
 		// anything not clustered is assigned to a singleton cluster (cluster with one member)
-		for (int i=0;i<numItems;i++) {
+		for (int i=0;i<singleLinkageClustererProduct.getNumItems();i++) {
 			boolean isAlreadyClustered = isAlreadyClustered(finalClusters, i);
 			if (!isAlreadyClustered) {
 				Set<Integer> members = new TreeSet<Integer>();
@@ -329,17 +208,6 @@ public class SingleLinkageClusterer {
 		logger.debug("Clusters: \n"+clustersToString(finalClusters));
 
 		return finalClusters;
-	}
-
-	private int firstClusterId(Map<Integer, Set<Integer>> clusters, int i) {
-		int firstClusterId = -1;
-		for (int cId : clusters.keySet()) {
-			Set<Integer> members = clusters.get(cId);
-			if (members.contains(dendrogram[i].getFirst())) {
-				firstClusterId = cId;
-			}
-		}
-		return firstClusterId;
 	}
 
 	private int secondClusterId(Map<Integer, Set<Integer>> clusters, int i) {
@@ -364,22 +232,6 @@ public class SingleLinkageClusterer {
 		return isAlreadyClustered;
 	}
 
-	private boolean isWithinCutoff(int i, double cutoff) {
-		if (isScoreMatrix) {
-			if (dendrogram[i].getClosestDistance()>cutoff) {
-				return true;
-			} else {
-				return false;
-			}
-		} else {
-			if (dendrogram[i].getClosestDistance()<cutoff) {
-				return true;
-			} else {
-				return false;
-			}
-		}
-	}
-
 	private String clustersToString(Map<Integer,Set<Integer>> finalClusters) {
 		StringBuilder sb = new StringBuilder();
 		for (int cId:finalClusters.keySet()) {
@@ -392,26 +244,12 @@ public class SingleLinkageClusterer {
 		return sb.toString();
 	}
 
-	private String matrixToString() {
-		StringBuilder sb = new StringBuilder();
-		for (int i=0;i<numItems;i++) {
-			for (int j=0;j<numItems;j++) {
-				if (i==j) {
-					sb.append(String.format("%6s ","x"));
-				}
-				else if (i<j) {
-					if (matrix[i][j]==Double.MAX_VALUE) sb.append(String.format("%6s ","inf"));
-					else sb.append(String.format(Locale.US, "%6.2f ",matrix[i][j]));
-				}
-				else {
-					if (matrix[j][i]==Double.MAX_VALUE) sb.append(String.format("%6s ","inf"));
-					else sb.append(String.format(Locale.US, "%6.2f ",matrix[j][i]));
-				}
-			}
-			sb.append("\n");
-		}
-		sb.append("\n");
-		return sb.toString();
+	public void setDendrogram(LinkedPair[] dendrogram) {
+		this.dendrogram = dendrogram;
+	}
+
+	public LinkedPair[] getDendrogram2() {
+		return dendrogram;
 	}
 
 }

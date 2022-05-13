@@ -145,9 +145,14 @@ public class EmblReader {
 		else if (lineIdentifier.equals("RT"))
 			emblReference.setReferenceTitle(lineInfo);
 		else if (lineIdentifier.equals("RL")) {
-			emblReference.setReferenceLocation(lineInfo);
-			emblReferences.add(emblReference.copyEmblReference(emblReference));
+			emblReferences(lineInfo, emblReference, emblReferences);
 		}
+	}
+
+	private static void emblReferences(String lineInfo, EmblReference emblReference,
+			LinkedList<EmblReference> emblReferences) {
+		emblReference.setReferenceLocation(lineInfo);
+		emblReferences.add(emblReference.copyEmblReference(emblReference));
 	}
 
 	private static void populateAccessionNumber(String line, LinkedList<String> accessionNumber) {
