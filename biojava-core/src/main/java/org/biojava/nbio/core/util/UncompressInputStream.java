@@ -119,59 +119,32 @@ public class UncompressInputStream extends FilterInputStream {
 	private static final int TBL_CLEAR = 0x100;
 	private static final int TBL_FIRST = TBL_CLEAR + 1;
 
-	private int[] tab_prefix;
-	private byte[] tab_suffix;
-	final private int[] zeros = new int[256];
-	private byte[] stack;
-
-	// various state
-	private boolean block_mode;
-	private int n_bits;
-	private int maxbits;
-	private int maxmaxcode;
-	private int maxcode;
-	private int bitmask;
-	private int oldcode;
-	private byte finchar;
-	private int stackp;
-	private int free_ent;
-
-	/* input buffer
-		The input stream must be considered in chunks
-		Each chunk is of length eight times the current code length.
-		Thus the chunk contains eight codes; NOT on byte boundaries.
-	*/
-	final private byte[] data = new byte[10000];
-	private int
-	    bit_pos = 0,  // current bitwise location in bitstream
-	    end = 0,      // index of next byte to fill in data
-	    got = 0;      // number of bytes gotten by most recent read()
-	private boolean eof = false;
+	private UncompressInputStreamData data = new UncompressInputStreamData(new int[256], new byte[10000], 0, 0, 0, false);
 	private static final int EXTRA = 64;
 
 
 	@Override
 	public synchronized int read(byte[] buf, int off, int len)
 			throws IOException {
-		if (eof) return -1;
+		if (data.eof) return -1;
 		int start = off;
 
 		/* Using local copies of various variables speeds things up by as
 		 * much as 30% !
 		 */
-		int[] l_tab_prefix = tab_prefix;
-		byte[] l_tab_suffix = tab_suffix;
-		byte[] l_stack = stack;
-		int l_n_bits = n_bits;
-		int l_maxcode = maxcode;
-		int l_maxmaxcode = maxmaxcode;
-		int l_bitmask = bitmask;
-		int l_oldcode = oldcode;
-		byte l_finchar = finchar;
-		int l_stackp = stackp;
-		int l_free_ent = free_ent;
-		byte[] l_data = data;
-		int l_bit_pos = bit_pos;
+		int[] l_tab_prefix = data.tab_prefix;
+		byte[] l_tab_suffix = data.tab_suffix;
+		byte[] l_stack = data.stack;
+		int l_n_bits = data.n_bits;
+		int l_maxcode = data.maxcode;
+		int l_maxmaxcode = data.maxmaxcode;
+		int l_bitmask = data.bitmask;
+		int l_oldcode = data.oldcode;
+		byte l_finchar = data.finchar;
+		int l_stackp = data.stackp;
+		int l_free_ent = data.free_ent;
+		byte[] l_data = data.data;
+		int l_bit_pos = data.bit_pos;
 
 		// empty stack if stuff still left
 		int s_size = l_stack.length - l_stackp;
@@ -184,29 +157,29 @@ public class UncompressInputStream extends FilterInputStream {
 		}
 
 		if (len == 0) {
-			stackp = l_stackp;
+			data.stackp = l_stackp;
 			return off - start;
 		}
 
 		// loop, filling local buffer until enough data has been decompressed
 		main_loop: do {
-			if (end < EXTRA) fill();
+			if (data.end < EXTRA) fill();
 
-			int bit_end = (got > 0)
-			    ?  (end - end % l_n_bits) << 3  	// set to a "chunk" boundary
-			    :  (end << 3) - (l_n_bits - 1);  	// no more data, set to last code
+			int bit_end = (data.got > 0)
+			    ?  (data.end - data.end % l_n_bits) << 3  	// set to a "chunk" boundary
+			    :  (data.end << 3) - (l_n_bits - 1);  	// no more data, set to last code
 
 			while (l_bit_pos < bit_end) {		// handle 1-byte reads correctly
 				if (len == 0) {
-					n_bits = l_n_bits;
-					maxcode = l_maxcode;
-					maxmaxcode = l_maxmaxcode;
-					bitmask = l_bitmask;
-					oldcode = l_oldcode;
-					finchar = l_finchar;
-					stackp = l_stackp;
-					free_ent = l_free_ent;
-					bit_pos = l_bit_pos;
+					data.n_bits = l_n_bits;
+					data.maxcode = l_maxcode;
+					data.maxmaxcode = l_maxmaxcode;
+					data.bitmask = l_bitmask;
+					data.oldcode = l_oldcode;
+					data.finchar = l_finchar;
+					data.stackp = l_stackp;
+					data.free_ent = l_free_ent;
+					data.bit_pos = l_bit_pos;
 
 					return off - start;
 				}
@@ -219,7 +192,7 @@ public class UncompressInputStream extends FilterInputStream {
 							n_bytes - (l_bit_pos - 1 + n_bytes) % n_bytes;
 
 					l_n_bits++;
-					l_maxcode = (l_n_bits == maxbits) ? l_maxmaxcode :
+					l_maxcode = (l_n_bits == data.maxbits) ? l_maxmaxcode :
 							(1 << l_n_bits) - 1;
 
 					logger.debug("Code-width expanded to ", l_n_bits);
@@ -256,8 +229,8 @@ public class UncompressInputStream extends FilterInputStream {
 
 				s_size = s_size(l_tab_prefix, l_tab_suffix, l_stack, l_oldcode, l_finchar, l_stackp, l_free_ent, s_size,
 						code);
-				if (code == TBL_CLEAR && block_mode) {
-					System.arraycopy(zeros, 0, l_tab_prefix, 0, zeros.length);
+				if (code == TBL_CLEAR && data.block_mode) {
+					System.arraycopy(data.zeros, 0, l_tab_prefix, 0, data.zeros.length);
 					l_free_ent = TBL_FIRST - 1;
 
 					int n_bytes = l_n_bits << 3;
@@ -329,14 +302,14 @@ public class UncompressInputStream extends FilterInputStream {
 				// if output buffer full, then return
 
 				if (len == 0) {
-					n_bits = l_n_bits;
-					maxcode = l_maxcode;
-					bitmask = l_bitmask;
-					oldcode = l_oldcode;
-					finchar = l_finchar;
-					stackp = l_stackp;
-					free_ent = l_free_ent;
-					bit_pos = l_bit_pos;
+					data.n_bits = l_n_bits;
+					data.maxcode = l_maxcode;
+					data.bitmask = l_bitmask;
+					data.oldcode = l_oldcode;
+					data.finchar = l_finchar;
+					data.stackp = l_stackp;
+					data.free_ent = l_free_ent;
+					data.bit_pos = l_bit_pos;
 
 					return off - start;
 				}
@@ -345,26 +318,26 @@ public class UncompressInputStream extends FilterInputStream {
 			l_bit_pos = resetbuf(l_bit_pos);
 		} while
 	   		// old code: (got>0)  fails if code width expands near EOF
-	   		(got > 0	    // usually true
-			|| l_bit_pos < (end << 3) - (l_n_bits - 1));  // last few bytes
+	   		(data.got > 0	    // usually true
+			|| l_bit_pos < (data.end << 3) - (l_n_bits - 1));  // last few bytes
 
-		n_bits = l_n_bits;
-		maxcode = l_maxcode;
-		bitmask = l_bitmask;
-		oldcode = l_oldcode;
-		finchar = l_finchar;
-		stackp = l_stackp;
-		free_ent = l_free_ent;
-		bit_pos = l_bit_pos;
+		data.n_bits = l_n_bits;
+		data.maxcode = l_maxcode;
+		data.bitmask = l_bitmask;
+		data.oldcode = l_oldcode;
+		data.finchar = l_finchar;
+		data.stackp = l_stackp;
+		data.free_ent = l_free_ent;
+		data.bit_pos = l_bit_pos;
 
-		eof = true;
+		data.eof = true;
 		return off - start;
 	}
 
 
 	private int s_size(int[] l_tab_prefix, byte[] l_tab_suffix, byte[] l_stack, int l_oldcode, byte l_finchar,
 			int l_stackp, int l_free_ent, int s_size, int code) throws IOException {
-		if (code == TBL_CLEAR && block_mode) {
+		if (code == TBL_CLEAR && data.block_mode) {
 			l_free_ent = TBL_FIRST - 1;
 		}
 		l_stackp = l_stack.length;
@@ -397,15 +370,15 @@ public class UncompressInputStream extends FilterInputStream {
 	 */
 	private int resetbuf(int bit_pos) {
 		int pos = bit_pos >> 3;
-		System.arraycopy(data, pos, data, 0, end - pos);
-		end -= pos;
+		System.arraycopy(data.data, pos, data.data, 0, data.end - pos);
+		data.end -= pos;
 		return 0;
 	}
 
 
 	private void fill() throws IOException {
-		got = in.read(data, end, data.length - 1 - end);
-		if (got > 0) end += got;
+		data.got = in.read(data.data, data.end, data.data.length - 1 - data.end);
+		if (data.got > 0) data.end += data.got;
 	}
 
 
@@ -417,7 +390,7 @@ public class UncompressInputStream extends FilterInputStream {
 
 	@Override
 	public synchronized int available() throws IOException {
-		if (eof) return 0;
+		if (data.eof) return 0;
 		// the old code was:    return in.available();
 		// it fails because this.read() can return bytes
 		// even after in.available()  is zero
@@ -452,11 +425,11 @@ public class UncompressInputStream extends FilterInputStream {
 		int header = in.read();
 		if (header < 0) throw new EOFException("Failed to read header");
 
-		block_mode = (header & HDR_BLOCK_MODE) > 0;
-		maxbits = header & HDR_MAXBITS;
+		data.block_mode = (header & HDR_BLOCK_MODE) > 0;
+		data.maxbits = header & HDR_MAXBITS;
 
-		if (maxbits > MAX_BITS)
-			throw new IOException("Stream compressed with " + maxbits +
+		if (data.maxbits > MAX_BITS)
+			throw new IOException("Stream compressed with " + data.maxbits +
 					" bits, but can only handle " + MAX_BITS +
 					" bits");
 
@@ -466,25 +439,25 @@ public class UncompressInputStream extends FilterInputStream {
 		if ((header & HDR_FREE) > 0)
 			throw new IOException("Header bit 6 set");
 
-		logger.debug("block mode: {}", block_mode);
-		logger.debug("max bits:   {}", maxbits);
+		logger.debug("block mode: {}", data.block_mode);
+		logger.debug("max bits:   {}", data.maxbits);
 
 		// initialize stuff
-		maxmaxcode = 1 << maxbits;
-		n_bits = INIT_BITS;
-		maxcode = (1 << n_bits) - 1;
-		bitmask = maxcode;
-		oldcode = -1;
-		finchar = 0;
-		free_ent = block_mode ? TBL_FIRST : 256;
+		data.maxmaxcode = 1 << data.maxbits;
+		data.n_bits = INIT_BITS;
+		data.maxcode = (1 << data.n_bits) - 1;
+		data.bitmask = data.maxcode;
+		data.oldcode = -1;
+		data.finchar = 0;
+		data.free_ent = data.block_mode ? TBL_FIRST : 256;
 
-		tab_prefix = new int[1 << maxbits];
-		tab_suffix = new byte[1 << maxbits];
-		stack = new byte[1 << maxbits];
-		stackp = stack.length;
+		data.tab_prefix = new int[1 << data.maxbits];
+		data.tab_suffix = new byte[1 << data.maxbits];
+		data.stack = new byte[1 << data.maxbits];
+		data.stackp = data.stack.length;
 
 		for (int idx = 255; idx >= 0; idx--)
-			tab_suffix[idx] = (byte) idx;
+			data.tab_suffix[idx] = (byte) idx;
 	}
 
 	/**
