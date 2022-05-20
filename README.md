@@ -1,5 +1,12 @@
 # Welcome to <img src="logo-full.png" height="35"/>
 
+Daniel 93194
+Maria 92752
+Júlio 70060
+Afonso 93084
+Bernardo 92442
+Nuno 88036
+
 ![Build](https://github.com/biojava/biojava/actions/workflows/master.yml/badge.svg)
 [![Version](http://img.shields.io/badge/version-6.0.5-blue.svg?style=flat)](https://github.com/biojava/biojava/releases/tag/biojava-6.0.5) [![License](http://img.shields.io/badge/license-LGPL_2.1-blue.svg?style=flat)](https://github.com/biojava/biojava/blob/master/LICENSE) [![Join the chat at https://gitter.im/biojava/biojava](https://badges.gitter.im/biojava/biojava.svg)](https://gitter.im/biojava/biojava?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
